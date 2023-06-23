@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 import customtkinter
 import sys
 from os.path import dirname, abspath
@@ -149,8 +150,106 @@ class App(customtkinter.CTk):
         self.scrapper_path = self.scrapperExcel_path.get()
         self.delimiter = self.delimiterExcel.get()
 
-        main.excelToPandas(self.keepa_path)
-        main.csvToPandas(self.scrapper_path, self.delimiter)
+        verification=self.verifyEntries()
+
+        if verification is True: #If all required entries are filled
+            #FIRST LOAD THE DATAFRAMES
+            try:
+                keepa_df=main.excelToPandas(self.keepa_path)
+            except FileNotFoundError as e:
+                messagebox.showerror("Error", f"File not found: {e.filename}")
+                return
+            except PermissionError as e:
+                messagebox.showerror("Error", f"File permission error: {e}")
+                return
+
+            try:
+                scrapper_df=main.csvToPandas(self.scrapper_path, self.delimiter)
+            except FileNotFoundError as e:
+                messagebox.showerror("Error", f"File not found: {e.filename}")
+                return
+            except PermissionError as e:
+                messagebox.showerror("Error", f"File permission error: {e}")
+                return
+            
+            #CLEAN EMPTY UPC
+            try:
+                keepa_df=main.cleanEmptyUpc(keepa_df,self.KeepaColumnName.get())
+                scrapper_df=main.cleanEmptyUpc(scrapper_df,self.scrapperColumnName.get())
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+            
+            #MERGEDATAFRAMES
+            try:
+                merged_df=main.mergeAndSaveDataframes(scrapper_df,self.scrapperColumnName.get(),keepa_df,self.KeepaColumnName.get())
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+            
+            #MERGED_DF WITH NEW COLUMNS ADDED AND OPERATIONS DONE
+            try:
+                merged_df=main.setOperationsColumns(merged_df)
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+
+            #REORDER COLUMNS IN MERGED_dF
+            try:
+                merged_df=main.reorderColumns(merged_df)
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+            
+            #Do the prioritization
+            try:    
+                merged_df=main.fillPriorities(merged_df)
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+
+            #Send to excel
+            try:    
+                main.createExcel(merged_df, self.resultsExcel_path.get())
+                messagebox.showinfo("Proceso Satisfactorio", "ya puedes abrir tu excel")
+            except PermissionError as e:
+                messagebox.showerror("Error", f"File permission error: {e}")
+                return
+            except FileNotFoundError as e:
+                messagebox.showerror("Error", f"File not found: {e.filename}")
+                return
+            except Exception as e:
+                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                return
+
+        else:
+             messagebox.showerror("Error",verification)
+             return
+        
+        
+    def verifyEntries(self):
+        if self.KeepaExcel_path.get() == "":
+            return "Keepa excel path field is required"
+        elif self.scrapperExcel_path.get() == "":
+            return "Scrapper excel path field is required"
+        elif self.KeepaColumnName.get() == "":
+            return "Keepa column name field is required"
+        elif self.scrapperColumnName.get() == "":
+            return "Scrapper column name field is required"
+        elif self.delimiterExcel.get() == "":
+            return "Scrapper delimeter field is required"
+        elif self.resultsExcel_path.get() == "":
+            return "Results Excel path field is required"
+        else:
+            return True
+        
+        
+
+
+
+
+
+        
 
 
     def show_add_scrapper_frame(self):
@@ -277,7 +376,7 @@ class App(customtkinter.CTk):
         delete_button = customtkinter.CTkButton(self.buttons_frame, text="Delete", fg_color="red")
         delete_button.grid(row=0, column=1,ipadx=5, ipady=5,padx=(10,0), sticky="w")
     
-    #WHEN CHOICE CHANGE (UPC OR EAN)
+    #WHEN CHOICE CHANGE (UPC OR EAN) LOCAL PROCESS
     def productCodeChanged(self, productCode: str):
         self.KeepaColumnName.configure(textvariable=tk.StringVar(self, "Product Codes: " + productCode))
         self.scrapperColumnName.configure(textvariable=tk.StringVar(self, productCode.lower()))
