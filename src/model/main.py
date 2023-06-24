@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))# Get the current directory of main.py
@@ -7,9 +8,56 @@ import pandas
 import csv
 import tkinter as tk
 import numpy as np
+from model.Scrapper import Scrapper
 
+#ARRAY OF SCRAPPERS
+array_scrappers=[]
 #ARRAY WITH THE ORDER TO GET THE PRECIO SUGERIDO
 array_preciosugeridoventa=['New, 3rd Party FBA: 90 days avg.','Buy Box: 90 days avg.','List Price: 90 days avg.','New, 3rd Party FBM: 90 days avg.','Amazon: 90 days avg.','New: 90 days avg.','New, 3rd Party FBA: Current','Buy Box: Current','List Price: Current','New, 3rd Party FBM: Current','Amazon: Current','New: Current']
+
+def createScrapper(name, columns=None, column_upc=None, exe_path=None, results_analysis=None, base_files_analysis=None):
+    found=searchScrapper(name)
+    if found == False:
+        scrapper = Scrapper(name, columns, column_upc, exe_path, results_analysis, base_files_analysis)
+        array_scrappers.append(scrapper)
+        save_scrappers_array()
+        return
+    else:
+        return False
+
+def deleteScrapper(name):
+    for scrapper in array_scrappers:
+        if scrapper._name == name:
+            array_scrappers.remove(scrapper)
+            save_scrappers_array()
+            return
+    return False
+def searchScrapper(name):
+    for scrapper in array_scrappers:
+        if scrapper._name == name:
+            return scrapper
+    return False
+
+def editScrapper(name, new_name=None, new_columns=None, new_column_upc=None, new_exe_path=None, new_results_analysis=None, new_base_files_analysis=None):
+    for scrapper in array_scrappers:
+        if scrapper._name == name:
+            if new_name is not None:
+                scrapper._name = new_name
+            if new_columns is not None:
+                scrapper._columns = new_columns
+            if new_column_upc is not None:
+                scrapper._column_upc = new_column_upc
+            if new_exe_path is not None:
+                scrapper._exe_path = new_exe_path
+            if new_results_analysis is not None:
+                scrapper._results_analysis = new_results_analysis
+            if new_base_files_analysis is not None:
+                scrapper._base_files_analysis = new_base_files_analysis
+            save_scrappers_array()
+            return
+
+    return False
+    
 
 def excelToPandas(path):   
     return pandas.read_excel(path)
@@ -35,6 +83,34 @@ def mergeAndSaveDataframes(scrapper_df, scrapperColumnName, keepa_df,keepaColumn
     merged_df = pandas.merge(scrapper_df, keepa_df, left_on=scrapperColumnName, right_on=keepaColumnName, how="inner")
 
     return merged_df
+
+def save_scrappers_array():
+    with open('scrappers_data.json', 'w') as file:
+        json.dump(array_scrappers, file, default=lambda o: o.__dict__)
+
+# Function to load the scrappers_array from the JSON file
+def load_scrappers_array():
+    #print('loading scrappers')
+    try:
+        with open("scrappers_data.json", "r") as file:
+            loaded_data = json.load(file)
+    except FileNotFoundError:
+        return []
+
+    array_scrappers = []
+    for scrapper_data in loaded_data:
+        name = scrapper_data['_name']
+        columns = scrapper_data['_columns']
+        column_upc = scrapper_data['_column_upc']
+        exe_path = scrapper_data['_exe_path']
+        results_analysis = scrapper_data['_results_analysis']
+        base_files_analysis = scrapper_data['_base_files_analysis']
+        
+        scrapper = Scrapper(name, columns, column_upc, exe_path, results_analysis, base_files_analysis)
+        array_scrappers.append(scrapper)
+        #print('scrapper appended')
+    
+    return array_scrappers
 
 #Function to find the first column non empty to get the precio sugerido de venta
 def find_first_non_empty(row):
