@@ -248,7 +248,7 @@ class App(customtkinter.CTk):
         #WHEN CHOICE CHANGE (UPC OR EAN) LOCAL PROCESS
     def productCodeChanged(self, productCode: str):
         self.KeepaColumnName.configure(textvariable=tk.StringVar(self, "Product Codes: " + productCode))
-        self.scrapperColumnName.configure(textvariable=tk.StringVar(self, productCode.lower()))
+        #self.scrapperColumnName.configure(textvariable=tk.StringVar(self, productCode.lower()))
 
         #WHEN Scrapper CHANGE LOCAL PROCESS
     def scrapperChanged(self, scrapperName: str):
@@ -333,9 +333,6 @@ class App(customtkinter.CTk):
             messagebox.showerror("Error", "There is already a scrapper with that name")
         else:
             messagebox.showinfo("Proceso Satisfactorio", "El Scrapper ha sido creado")
-
-
-        
 
 
     def show_edit_scrapper_frame(self):
