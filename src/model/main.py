@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))# Get the current directory of main.py
@@ -67,15 +68,16 @@ def csvToPandas(path, sep):
     return pandas.read_csv(path , sep=sep)
 
 def cleanEmptyUpc(df, columnName):
-    # Drop rows where "upc" column is empty
-    df = df.dropna(subset=[columnName])
-
-    # Reset the index of the DataFrame
-    df = df.reset_index(drop=True)
-
+    if columnName in df.columns:
+        df = df.dropna(subset=[columnName])
+        # Reset the index of the DataFrame
+        df = df.reset_index(drop=True)
+    else:
+        print(f"Column '{columnName}' does not exist in the DataFrame, columns of the df are: ", df.columns)
     return df
+
 def mergeAndSaveDataframes(scrapper_df, scrapperColumnName, keepa_df,keepaColumnName):
-    
+    print("Combinando archivos, Columnas del scrapper CSV:", scrapper_df.columns)#Show the columns of the scrapper in case there is a mistake.
     scrapper_df[scrapperColumnName] = scrapper_df[scrapperColumnName].astype(str).str.split('.').str[0].str.zfill(13)
     keepa_df[keepaColumnName] = keepa_df[keepaColumnName].astype(str).str.split('.').str[0].str.zfill(13)
     
@@ -162,7 +164,11 @@ def setOperationsColumns(merged_df):
     merged_df['precio Sugerido de Venta']=merged_df['precio Sugerido de Venta'].astype(float)
     merged_df['Referral Fee %']=merged_df['Referral Fee %'].astype(float)
     merged_df['FBA Fees:']=merged_df['FBA Fees:'].astype(float)
-    merged_df['price']=merged_df['price'].str.replace(',', '.').astype(float) #Scrapper sometimes the price is 49.99 or 49,99
+
+    if merged_df['price'].dtype != object:  # Check if 'price' column is not already of string data type
+        merged_df['price'] = merged_df['price'].astype(str)  # Convert 'price' column to string data type
+
+    merged_df['price']=merged_df['price'].apply(lambda x: re.sub(r'[^0-9.]', '', str(x))).str.replace(',', '.').astype(float) #Scrapper sometimes the price is 49.99 or 49,99
 
     # Create columns in the DataFrame
     merged_df['costo logistico'] = (merged_df['Referral Fee %']*merged_df['precio Sugerido de Venta'])+10+ merged_df['FBA Fees:']
@@ -176,9 +182,11 @@ def setOperationsColumns(merged_df):
 
     return merged_df
 
-def reorderColumns(merged_df):
-    newOrder=['Title','ASIN', 'upc (ean)','precio Sugerido de Venta','price','costo logistico', 
-       'utilidad', 'roi','availability', 'sku','title','OriginalPrice','Sales Rank: Current', 
+def reorderColumns(merged_df, scrapperColumns):
+    columns_array=scrapperColumns.split(",") #Lo que el usuario digita es los nombres de las columnas separados con comas
+    print("Reordenando Columnas, columns array", columns_array)
+    keepaOrder=['precio Sugerido de Venta','costo logistico', 
+       'utilidad', 'roi', 'Title','ASIN','Sales Rank: Current', 
        'Sales Rank: 90 days avg.',
        'Sales Rank: Drops last 30 days', 'Sales Rank: Drops last 90 days',
        'Sales Rank: Drops last 180 days', 'Reviews: Rating',
@@ -198,6 +206,7 @@ def reorderColumns(merged_df):
        'Product Group', 'Model', 'Variation Attributes', 'Color', 'Size',
        'Author', 'Contributors', 'Number of Items', 'Number of Pages',
        'Publication Date', 'Package: Weight (g)', 'Adult Product' ]
+    newOrder=columns_array+keepaOrder #Primero aparece las columnas del scrapper luego las de keepa
     merged_df=merged_df[newOrder]
     return merged_df
 

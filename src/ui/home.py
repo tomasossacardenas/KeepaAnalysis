@@ -3,6 +3,7 @@ from tkinter import messagebox
 import customtkinter
 import sys
 from os.path import dirname, abspath
+import traceback
 
 # Add the root directory to the system path
 root_dir = dirname(dirname(abspath(__file__)))
@@ -148,6 +149,7 @@ class App(customtkinter.CTk):
 
     #Connected to main.py
     def analyze(self):
+        self.scrapper=main.searchScrapper(self.scrappers_menu.get())
         self.keepa_path = self.KeepaExcel_path.get()
         self.scrapper_path = self.scrapperExcel_path.get()
         self.delimiter = self.delimiterExcel.get()
@@ -179,35 +181,40 @@ class App(customtkinter.CTk):
                 keepa_df=main.cleanEmptyUpc(keepa_df,self.KeepaColumnName.get())
                 scrapper_df=main.cleanEmptyUpc(scrapper_df,self.scrapperColumnName.get())
             except Exception as e:
-                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                messagebox.showerror("Error", f"Something wrong occured cleaning the empty upcs: {e}")
+                traceback.print_exc()
                 return
             
             #MERGEDATAFRAMES
-            try:
+            try: 
                 merged_df=main.mergeAndSaveDataframes(scrapper_df,self.scrapperColumnName.get(),keepa_df,self.KeepaColumnName.get())
             except Exception as e:
-                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                messagebox.showerror("Error", f"Something wrong occured merging data: {e}")
+                traceback.print_exc()
                 return
             
             #MERGED_DF WITH NEW COLUMNS ADDED AND OPERATIONS DONE
             try:
                 merged_df=main.setOperationsColumns(merged_df)
             except Exception as e:
-                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                messagebox.showerror("Error", f"Something wrong occured doing operations: {e}")
+                traceback.print_exc()
                 return
 
             #REORDER COLUMNS IN MERGED_dF
+            #IT IS NOT ESSENTIAL SO IF ITS NOT POSSIBLE THEN THE PROCESS CONTINUES
             try:
-                merged_df=main.reorderColumns(merged_df)
+                merged_df=main.reorderColumns(merged_df, self.scrapper._columns)
             except Exception as e:
-                messagebox.showerror("Error", f"Something wrong occured: {e}")
-                return
+                messagebox.showwarning("Problem", f"Could not reorder columns but the process will continue: {e}")
+                traceback.print_exc()
             
             #Do the prioritization
             try:    
                 merged_df=main.fillPriorities(merged_df)
             except Exception as e:
                 messagebox.showerror("Error", f"Something wrong occured: {e}")
+                traceback.print_exc()
                 return
 
             #Send to excel
@@ -216,12 +223,15 @@ class App(customtkinter.CTk):
                 messagebox.showinfo("Proceso Satisfactorio", "ya puedes abrir tu excel")
             except PermissionError as e:
                 messagebox.showerror("Error", f"File permission error: {e}")
+                traceback.print_exc()
                 return
             except FileNotFoundError as e:
                 messagebox.showerror("Error", f"File not found: {e.filename}")
+                traceback.print_exc()
                 return
             except Exception as e:
-                messagebox.showerror("Error", f"Something wrong occured: {e}")
+                messagebox.showerror("Error", f"Something wrong occured creating the results excel: {e}")
+                traceback.print_exc()
                 return
 
         else:
