@@ -16,10 +16,10 @@ array_scrappers=[]
 #ARRAY WITH THE ORDER TO GET THE PRECIO SUGERIDO
 array_preciosugeridoventa=['New, 3rd Party FBA: 90 days avg.','Buy Box: 90 days avg.','List Price: 90 days avg.','New, 3rd Party FBM: 90 days avg.','Amazon: 90 days avg.','New: 90 days avg.','New, 3rd Party FBA: Current','Buy Box: Current','List Price: Current','New, 3rd Party FBM: Current','Amazon: Current','New: Current']
 
-def createScrapper(name, columns=None, column_upc=None, exe_path=None, results_analysis=None, base_files_analysis=None):
+def createScrapper(name, columns=None, column_upc=None, column_price=None, exe_path=None, results_analysis=None, base_files_analysis=None):
     found=searchScrapper(name)
     if found == False:
-        scrapper = Scrapper(name, columns, column_upc, exe_path, results_analysis, base_files_analysis)
+        scrapper = Scrapper(name, columns, column_upc, column_price, exe_path, results_analysis, base_files_analysis)
         array_scrappers.append(scrapper)
         save_scrappers_array()
         return
@@ -39,7 +39,7 @@ def searchScrapper(name):
             return scrapper
     return False
 
-def editScrapper(name, new_name=None, new_columns=None, new_column_upc=None, new_exe_path=None, new_results_analysis=None, new_base_files_analysis=None):
+def editScrapper(name, new_name=None, new_columns=None, new_column_upc=None, new_column_price=None,new_exe_path=None, new_results_analysis=None, new_base_files_analysis=None):
     for scrapper in array_scrappers:
         if scrapper._name == name:
             if new_name is not None:
@@ -48,6 +48,8 @@ def editScrapper(name, new_name=None, new_columns=None, new_column_upc=None, new
                 scrapper._columns = new_columns
             if new_column_upc is not None:
                 scrapper._column_upc = new_column_upc
+            if new_column_price is not None:
+                scrapper._column_price = new_column_price
             if new_exe_path is not None:
                 scrapper._exe_path = new_exe_path
             if new_results_analysis is not None:
@@ -225,10 +227,12 @@ def checkHeaders(column_names, csv_file):
     with open(csv_file, 'r') as file:
         csv_reader = csv.reader(file)
         headers = next(csv_reader)  # Read the first row (headers) from the CSV
-        if "," in headers:
-            headers=headers[0].split(",")
-        else:
-            headers=headers[0].split(";")
+        
+        if(len(headers)!=len(column_names_list)): #Because both of them are not already in list form        
+            if "," in headers:
+                headers=headers[0].split(",")
+            else:
+                headers=headers[0].split(";")
 
         print("Checking columns existing:",headers,"vs",column_names_list)
 

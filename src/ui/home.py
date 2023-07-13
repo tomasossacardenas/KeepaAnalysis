@@ -159,7 +159,15 @@ class App(customtkinter.CTk):
     #Connected to main.py
     def analyze(self):
         self.scrapper=main.searchScrapper(self.scrappers_menu.get())
-        self.columnsCheck=main.checkHeaders(self.scrapper._columns,self.scrapperExcel_path.get())
+        try:
+            self.columnsCheck=main.checkHeaders(self.scrapper._columns,self.scrapperExcel_path.get())
+        except FileNotFoundError as e:
+                messagebox.showerror("Error", f"File not found: {e.filename}")
+                return
+        except PermissionError as e:
+                messagebox.showerror("Error", f"File permission error: {e}")
+                return
+
         if(self.columnsCheck == False):
                 messagebox.showerror("Error", f"Scrapper columns doesnt exist in the csv: {self.scrapper._columns}")
                 return
@@ -333,29 +341,45 @@ class App(customtkinter.CTk):
         self.base_files_analysis_entry = customtkinter.CTkEntry(self.add_scrapper_frame)
         self.base_files_analysis_entry.grid(row=6, column=1, padx=(20,20), pady=(0,0), sticky="we")
 
+        # Column Price entry
+        self.column_price_label = customtkinter.CTkLabel(self.add_scrapper_frame, text="Column Price Name:")
+        self.column_price_label.grid(row=7, column=0, columnspan=2,padx=(20,20), sticky="w")
+        self.column_price_entry = customtkinter.CTkEntry(self.add_scrapper_frame)
+        self.column_price_entry.grid(row=8, column=0,columnspan=2, padx=(20,20), pady=(0,0), sticky="we")
+
         # Save button
         self.save_button = customtkinter.CTkButton(self.add_scrapper_frame, text="Create", command=self.addScrapper)
-        self.save_button.grid(row=7, columnspan=2, pady=(30,30))
+        self.save_button.grid(row=9, columnspan=2, pady=(30,30))
 
     def addScrapper(self):
         name=self.name_entry.get()
         columns=self.columns_entry.get()
         column_upc=self.column_upc_entry.get()
+        column_price=self.column_price_entry.get()
         exe_path=self.exe_path_entry.get()
         results_analysis=self.results_analysis_entry.get()
         base_files_analysis=self.base_files_analysis_entry.get()
 
+
         if name == "":
             messagebox.showerror("Error", "Name is required")
+            return
         elif column_upc=="":
             messagebox.showerror("Error", "Columns Upc is required")
+            return
+        elif column_price=="":
+            messagebox.showerror("Error", "Columns Price is required")
+            return
 
-        result=main.createScrapper(name=name, columns=columns, column_upc=column_upc, exe_path=exe_path,results_analysis=results_analysis,base_files_analysis=base_files_analysis)
+
+        result=main.createScrapper(name=name, columns=columns, column_upc=column_upc, column_price=column_price, exe_path=exe_path,results_analysis=results_analysis,base_files_analysis=base_files_analysis)
         
         if result==False:
             messagebox.showerror("Error", "There is already a scrapper with that name")
+            return
         else:
             messagebox.showinfo("Proceso Satisfactorio", "El Scrapper ha sido creado")
+            return
 
 
     def show_edit_scrapper_frame(self):
@@ -384,7 +408,7 @@ class App(customtkinter.CTk):
         self.name_entry = customtkinter.CTkEntry(self.name_frame)
         self.name_entry.grid(row=1, column=0,padx=(0,20), pady=(0,0), sticky="we")
         
-        #delete Scrapper
+        #Search Scrapper
         self.search_button = customtkinter.CTkButton(self.name_frame, text="Search", fg_color="transparent", border_color="white", border_width=1, command=self.fillScrapperInfo)
         self.search_button.grid(row=1, column=1)
 
@@ -399,6 +423,12 @@ class App(customtkinter.CTk):
         self.column_upc_label.grid(row=5, column=0,padx=(20,20), sticky="w")
         self.column_upc_entry = customtkinter.CTkEntry(self.edit_scrapper_frame)
         self.column_upc_entry.grid(row=6, column=0,padx=(20,20), pady=(0,0), sticky="we")
+
+        # Column PRICE entry
+        self.column_price_label = customtkinter.CTkLabel(self.edit_scrapper_frame, text="Column Price:")
+        self.column_price_label.grid(row=7, column=0,padx=(20,20), sticky="w")
+        self.column_price_entry = customtkinter.CTkEntry(self.edit_scrapper_frame)
+        self.column_price_entry.grid(row=8, column=0,padx=(20,20), pady=(0,0), sticky="we")
         
         # EXE Path entry
         self.exe_path_label = customtkinter.CTkLabel(self.edit_scrapper_frame, text="EXE Path:")
@@ -419,7 +449,7 @@ class App(customtkinter.CTk):
         self.base_files_analysis_entry.grid(row=6, column=1, padx=(20,20), pady=(0,0), sticky="we")
 
         self.buttons_frame=customtkinter.CTkFrame(self.edit_scrapper_frame, corner_radius=0, fg_color="transparent") 
-        self.buttons_frame.grid(row=7, column=0, columnspan=2,padx=(0,20), pady=(30,30),sticky="nsew")
+        self.buttons_frame.grid(row=9, column=0, columnspan=2,padx=(0,20), pady=(30,30),sticky="nsew")
         self.buttons_frame.columnconfigure((0,1), weight=1)
 
         # Save button
@@ -438,6 +468,7 @@ class App(customtkinter.CTk):
             if scrapper != False:
                 self.columns_entry.configure(textvariable=tk.StringVar(self, scrapper._columns))
                 self.column_upc_entry.configure(textvariable=tk.StringVar(self, scrapper._column_upc))
+                self.column_price_entry.configure(textvariable=tk.StringVar(self, scrapper._column_price))
                 self.exe_path_entry.configure(textvariable=tk.StringVar(self, scrapper._exe_path))
                 self.results_analysis_entry.configure(textvariable=tk.StringVar(self, scrapper._results_analysis))
                 self.base_files_analysis_entry.configure(textvariable=tk.StringVar(self, scrapper._base_files_analysis))            
@@ -454,10 +485,11 @@ class App(customtkinter.CTk):
             if scrapper != False:
                 columns=self.columns_entry.get()
                 column_upc=self.column_upc_entry.get()
+                column_price=self.column_price_entry.get()
                 exe_path=self.exe_path_entry.get()
                 results_analysis=self.results_analysis_entry.get()
                 base_files_analysis=self.base_files_analysis_entry.get()
-                result=main.editScrapper(name, new_name=name, new_columns=columns, new_column_upc=column_upc, new_exe_path=exe_path, new_results_analysis=results_analysis, new_base_files_analysis=base_files_analysis)
+                result=main.editScrapper(name, new_name=name, new_columns=columns, new_column_upc=column_upc, new_column_price=column_price, new_exe_path=exe_path, new_results_analysis=results_analysis, new_base_files_analysis=base_files_analysis)
                 if result ==False:
                     messagebox.showerror("Error", "Could not edit the scrapper info")
                 else:
