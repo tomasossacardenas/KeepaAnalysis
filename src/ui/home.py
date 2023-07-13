@@ -9,6 +9,8 @@ import traceback
 root_dir = dirname(dirname(abspath(__file__)))
 sys.path.append(root_dir)
 
+
+
 # Now you can import `main.py` from `model` package
 from model import main
 
@@ -110,12 +112,19 @@ class App(customtkinter.CTk):
         self.KeepaColumnName.grid(row=5,column=0, padx=20, pady=(0, 0))
 
         #If dropbox is "upc" then is "Product Code: UPC" and if is "ean" is "Product Code: EAN"
-        self.scrapperColumnName_label = customtkinter.CTkLabel(self.sidebar_frame, text="Scrapper Column Name", font=customtkinter.CTkFont(size=15), anchor="w")
+        self.scrapperColumnName_label = customtkinter.CTkLabel(self.sidebar_frame, text="Scrapper Column UPC", font=customtkinter.CTkFont(size=15), anchor="w")
         self.scrapperColumnName_label.grid(row=6, column=0, padx=20, pady=(20, 10))
         selected_scrapper = main.searchScrapper(self.scrappers_menu.get())
         scrapper_column_name = selected_scrapper._column_upc if selected_scrapper else ""
         self.scrapperColumnName = customtkinter.CTkEntry(self.sidebar_frame, textvariable=tk.StringVar(self, scrapper_column_name))
         self.scrapperColumnName.grid(row=7,column=0, padx=20, pady=(0, 0))
+
+        #If dropbox is "upc" then is "Product Code: UPC" and if is "ean" is "Product Code: EAN"
+        self.scrapperColumnPrice_label = customtkinter.CTkLabel(self.sidebar_frame, text="Scrapper Column Price", font=customtkinter.CTkFont(size=15), anchor="w")
+        self.scrapperColumnPrice_label.grid(row=8, column=0, padx=20, pady=(20, 10))
+        scrapper_column_price = selected_scrapper._column_price if selected_scrapper else ""
+        self.scrapperColumnPrice = customtkinter.CTkEntry(self.sidebar_frame, textvariable=tk.StringVar(self, scrapper_column_price))
+        self.scrapperColumnPrice.grid(row=9,column=0, padx=20, pady=(0, 0))
        
         #Excel Keepa Path
         self.KeepaExcel_label = customtkinter.CTkLabel(self.middleHome_frame, text="Keepa Excel", font=customtkinter.CTkFont(size=15), anchor="w")
@@ -150,6 +159,10 @@ class App(customtkinter.CTk):
     #Connected to main.py
     def analyze(self):
         self.scrapper=main.searchScrapper(self.scrappers_menu.get())
+        self.columnsCheck=main.checkHeaders(self.scrapper._columns,self.scrapperExcel_path.get())
+        if(self.columnsCheck == False):
+                messagebox.showerror("Error", f"Scrapper columns doesnt exist in the csv: {self.scrapper._columns}")
+                return
         self.keepa_path = self.KeepaExcel_path.get()
         self.scrapper_path = self.scrapperExcel_path.get()
         self.delimiter = self.delimiterExcel.get()
@@ -195,7 +208,7 @@ class App(customtkinter.CTk):
             
             #MERGED_DF WITH NEW COLUMNS ADDED AND OPERATIONS DONE
             try:
-                merged_df=main.setOperationsColumns(merged_df)
+                merged_df=main.setOperationsColumns(merged_df,self.scrapperColumnPrice.get())
             except Exception as e:
                 messagebox.showerror("Error", f"Something wrong occured doing operations: {e}")
                 traceback.print_exc()
@@ -264,7 +277,7 @@ class App(customtkinter.CTk):
     def scrapperChanged(self, scrapperName: str):
         scrapper=main.searchScrapper(scrapperName)
         self.scrapperColumnName.configure(textvariable=tk.StringVar(self, scrapper._column_upc))
-
+        self.scrapperColumnPrice.configure(textvariable=tk.StringVar(self, scrapper._column_price))
         self.KeepaExcel_path.configure(textvariable=tk.StringVar(self, scrapper._base_files_analysis))
         self.scrapperExcel_path.configure(textvariable=tk.StringVar(self, scrapper._base_files_analysis))
         self.resultsExcel_path.configure(textvariable=tk.StringVar(self, scrapper._results_analysis))
@@ -419,6 +432,7 @@ class App(customtkinter.CTk):
 
     def fillScrapperInfo(self):
         name=self.name_entry.get()
+
         if name != "":
             scrapper=main.searchScrapper(name)
             if scrapper != False:

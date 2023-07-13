@@ -104,11 +104,12 @@ def load_scrappers_array():
         name = scrapper_data['_name']
         columns = scrapper_data['_columns']
         column_upc = scrapper_data['_column_upc']
+        column_price=scrapper_data['_column_price']
         exe_path = scrapper_data['_exe_path']
         results_analysis = scrapper_data['_results_analysis']
         base_files_analysis = scrapper_data['_base_files_analysis']
         
-        scrapper = Scrapper(name, columns, column_upc, exe_path, results_analysis, base_files_analysis)
+        scrapper = Scrapper(name, columns, column_upc, column_price, exe_path, results_analysis, base_files_analysis)
         array_scrappers.append(scrapper)
         #print('scrapper appended')
     
@@ -156,7 +157,7 @@ def fillPriorities(merged_df):
 
     return priorities_df
 
-def setOperationsColumns(merged_df):
+def setOperationsColumns(merged_df, priceColumn):
     #Find precio sugerido de Venta with the function
     merged_df['precio Sugerido de Venta'] = merged_df.apply(find_first_non_empty, axis=1)
     
@@ -165,25 +166,28 @@ def setOperationsColumns(merged_df):
     merged_df['Referral Fee %']=merged_df['Referral Fee %'].astype(float)
     merged_df['FBA Fees:']=merged_df['FBA Fees:'].astype(float)
 
-    if merged_df['price'].dtype != object:  # Check if 'price' column is not already of string data type
-        merged_df['price'] = merged_df['price'].astype(str)  # Convert 'price' column to string data type
+    if merged_df[priceColumn].dtype != object:  # Check if 'price' column is not already of string data type
+        merged_df[priceColumn] = merged_df[priceColumn].astype(str)  # Convert 'price' column to string data type
 
-    merged_df['price']=merged_df['price'].apply(lambda x: re.sub(r'[^0-9.]', '', str(x))).str.replace(',', '.').astype(float) #Scrapper sometimes the price is 49.99 or 49,99
+    merged_df[priceColumn]=merged_df[priceColumn].apply(lambda x: re.sub(r'[^0-9.]', '', str(x))).str.replace(',', '.').astype(float) #Scrapper sometimes the price is 49.99 or 49,99
 
     # Create columns in the DataFrame
     merged_df['costo logistico'] = (merged_df['Referral Fee %']*merged_df['precio Sugerido de Venta'])+10+ merged_df['FBA Fees:']
     merged_df['costo logistico']=merged_df['costo logistico'].astype(float)
 
     #Look the utilidad column because price column name must always be the same in scrappers
-    merged_df['utilidad'] = merged_df['precio Sugerido de Venta']-merged_df['price']-merged_df['costo logistico'] 
+    merged_df['utilidad'] = merged_df['precio Sugerido de Venta']-merged_df[priceColumn]-merged_df['costo logistico'] 
     merged_df['utilidad']=merged_df['utilidad'].astype(float)
-    merged_df['roi'] = merged_df['utilidad']/(10+merged_df['price'])
+    merged_df['roi'] = merged_df['utilidad']/(10+merged_df[priceColumn])
     merged_df['roi']=merged_df['roi'].astype(float)
 
     return merged_df
 
 def reorderColumns(merged_df, scrapperColumns):
-    columns_array=scrapperColumns.split(",") #Lo que el usuario digita es los nombres de las columnas separados con comas
+    if "," in scrapperColumns:
+        columns_array=scrapperColumns.split(",") #Lo que el usuario digita es los nombres de las columnas separados con comas
+    else:
+        columns_array=scrapperColumns.split(";") #Lo que el usuario digita es los nombres de las columnas separados con comas
     print("Reordenando Columnas, columns array", columns_array)
     keepaOrder=['precio Sugerido de Venta','costo logistico', 
        'utilidad', 'roi', 'Title','ASIN','Sales Rank: Current', 
@@ -210,5 +214,27 @@ def reorderColumns(merged_df, scrapperColumns):
     merged_df=merged_df[newOrder]
     return merged_df
 
+
 def createExcel(dataframe, path):
     dataframe.to_excel(path)
+
+def checkHeaders(column_names, csv_file):
+    # Convert column_names string to a list
+    column_names_list = column_names.split(',')
+
+    with open(csv_file, 'r') as file:
+        csv_reader = csv.reader(file)
+        headers = next(csv_reader)  # Read the first row (headers) from the CSV
+        if "," in headers:
+            headers=headers[0].split(",")
+        else:
+            headers=headers[0].split(";")
+
+        print("Checking columns existing:",headers,"vs",column_names_list)
+
+        check= all(item in headers for item in column_names_list)
+
+        if check is False:
+            return False
+
+    return True
